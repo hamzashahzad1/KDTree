@@ -1,0 +1,223 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{mathtools}
+\usepackage{xcolor}
+
+\title{KD-Trees}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Setup}
+\begin{algorithm}
+\caption{Setup $(dataset, depth, dim, root)$}\label{alg:cap}
+\begin{algorithmic}
+\State $cd = [depth \mod dim]$
+\State $dataset =$ sort dataset according to cd
+\State $median\_points = $ at max 2 medians from the dataset
+\State $median = $ first median point
+\State $root.value = median$
+\State $left\_array = $ dataset values to the left of the median
+\State $right\_array = $ dataset values to the right of the median
+
+\If{$left\_array$ is not empty}
+\State $root.left = $ Setup(left\_array, depth+1, dim, root.left)
+\EndIf
+
+\If{$right\_array$ is not empty}
+\State $root.right = $ Setup(right\_array, depth+1, dim, root.right)
+\EndIf
+\State \Return root
+\end{algorithmic}
+\end{algorithm}
+
+\section{Searches}
+\begin{algorithm}
+    \caption{Search $(query, depth, dim, k, node, maxHeap, section\_reached)$}\label{alg:cap}
+    \begin{algorithmic}
+        \State $cd = [depth \mod dim]$
+        \If {$section\_reached$ is false}
+        \If {$node = leaf$}
+            \State $section\_reached = true$
+        \EndIf
+        \If {$maxHeap.size < k$}
+            \State $maxHeap.insert(node.value)$
+        \ElsIf {$node.value$ is closer than maxHeap.max}
+            \State $maxHeap.removeMax$
+            \State $maxHeap.insert(node.value)$
+        \EndIf
+            \If {$query[cd] < node[cd]$ and node is not leaf}
+                \State $node.leftExplored = true$
+                \State $Search(query, depth+1, dim, k, node.left, maxHeap, section\_reached)$
+            \ElsIf {$node$ is not leaf}
+                \State $node.rightExplored = true$
+                \State $Search(query, depth+1, dim, k, node.right, maxHeap, section\_reached)$
+            \EndIf
+        \Else
+            \If {$maxHeap.size < k$}
+                \State $maxHeap.insert(node.value)$
+            \ElsIf {$node.value$ is closer than maxHeap.max}
+                \State $maxHeap.removeMax$
+                \State $maxHeap.insert(node.value)$
+            \EndIf
+            \If{$node$ is leaf}
+                \State $Search(query, depth-1, dim, k, node.parent, maxHeap, section\_reached)$
+            \Else
+                \If{both children of node explored or node.value $>$ maxHeap.max}
+                    \State $Search(query, depth-1, dim, k, node.parent, maxHeap, section\_reached)$
+                \ElsIf{$node.leftExplored$ and node.value $<$ maxHeap.max}
+                    \State $Search(query, depth+1, dim, k, node.right, maxHeap, section\_reached)$
+                 \ElsIf{$node.rightExplored$ and node.value $<$ maxHeap.max}
+                    \State $Search(query, depth+1, dim, k, node.left, maxHeap, section\_reached)$
+                \ElsIf{node.value $<$ maxHeap.max}
+                    \State $Search(query, depth+1, dim, k, node.left, maxHeap, section\_reached)$
+                    \State $Search(query, depth+1, dim, k, node.right, maxHeap, section\_reached)$
+                \EndIf
+            \EndIf
+        \EndIf
+        
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+    \caption{ModifiedSearch $(query, depth, dim, k, node, maxHeap, section\_reached, nodeCount, c)$}\label{alg:cap}
+    \begin{algorithmic}
+    {\ttfamily \footnotesize{
+        \If{$nodeCount >= clogN$}
+            \If{$maxHeap.length < k$}
+                \State fill maxHeap with random values upto k
+            \EndIf
+            \State exit
+        \EndIf
+        \State $cd = [depth \mod dim]$
+        \If {$section\_reached$ is false}
+        \If {$node = leaf$}
+            \State $section\_reached = true$
+        \EndIf
+        \If {$maxHeap.size < k$}
+            \State $maxHeap.insert(node.value)$
+        \ElsIf {$node.value$ is closer than maxHeap.max}
+            \State $maxHeap.removeMax$
+            \State $maxHeap.insert(node.value)$
+        \EndIf
+            \If {$query[cd] < node[cd]$ and node is not leaf}
+                \State $node.leftExplored = true$
+                \State $nodeCount += 1$
+                \State $ModifiedSearch(query, depth+1, dim, k, node.left, maxHeap, section\_reached)$
+            \ElsIf {$node$ is not leaf}
+                \State $node.rightExplored = true$
+                \State $nodeCount += 1$
+                \State $ModifiedSearch(query, depth+1, dim, k, node.right, maxHeap, section\_reached)$
+            \EndIf
+        \Else
+            \If {$maxHeap.size < k$}
+                \State $maxHeap.insert(node.value)$
+            \ElsIf {$node.value$ is closer than maxHeap.max}
+                \State $maxHeap.removeMax$
+                \State $maxHeap.insert(node.value)$
+            \EndIf
+            \If{$node$ is leaf}
+                \State $nodeCount += 1$
+                \State $ModifiedSearch(query, depth-1, dim, k, node.parent, maxHeap, section\_reached)$
+            \Else
+                \If{both children of node explored or node.value $>$ maxHeap.max}
+                    \State $nodeCount += 1$
+                    \State $ModifiedSearch(query, depth-1, dim, k, node.parent, maxHeap, section\_reached)$
+                \ElsIf{$node.leftExplored$ and node.value $<$ maxHeap.max}
+                    \State $nodeCount += 1$
+                    \State $ModifiedSearch(query, depth+1, dim, k, node.right, maxHeap, section\_reached)$
+                 \ElsIf{$node.rightExplored$ and node.value $<$ maxHeap.max}
+                    \State $nodeCount += 1$
+                    \State $ModifiedSearch(query, depth+1, dim, k, node.left, maxHeap, section\_reached)$
+                \ElsIf{node.value $<$ maxHeap.max}
+                    \State $nodeCount += 1$
+                    \State $ModifiedSearch(query, depth+1, dim, k, node.left, maxHeap, section\_reached)$
+                    \State $nodeCount += 1$
+                    \State $ModifiedSearch(query, depth+1, dim, k, node.right, maxHeap, section\_reached)$
+                \EndIf
+            \EndIf
+        \EndIf
+    }}    
+    \end{algorithmic}
+\end{algorithm}
+
+
+\begin{algorithm}
+    \caption{ObliviousSearch $(query, depth, dim, k, node, maxHeap, section\_reached, nodeCount, c)$}\label{alg:cap}
+    \begin{algorithmic}
+    {\ttfamily \footnotesize{
+        \If{$nodeCount >= clogN$}
+            \State exit
+            \If{$maxHeap.length < k$}
+                \State fill maxHeap with random values upto k
+            \EndIf
+        \EndIf
+        \State $cd = [depth \mod dim]$
+        \If {$section\_reached$ is false}
+            \If {$node = leaf$}
+                \State $section\_reached = true$
+            \EndIf
+            \If {$maxHeap.size < k$}
+                \State $maxHeap.insert(node.value)$
+            \ElsIf {$node.value$ is closer than maxHeap.max}
+                \State $maxHeap.removeMax$
+                \State $maxHeap.insert(node.value)$
+            \EndIf
+            \If {$query[cd] < node[cd]$ and node is not leaf}
+                \State $node.leftExplored = true$
+                \State $nodeCount += 1$
+                \textcolor{blue}{\State $node.left = OMAP.retrieve(node.leftLabel)$}
+                \State $ObliviousSearch(query, depth+1, dim, k, node.left, maxHeap, section\_reached)$
+            \ElsIf {$node$ is not leaf}
+                \State $node.rightExplored = true$
+                \State $nodeCount += 1$
+                \textcolor{blue}{\State $node.right = OMAP.retrieve(node.rightLabel)$}
+                \State $ObliviousSearch(query, depth+1, dim, k, node.right, maxHeap, section\_reached)$
+            \EndIf
+        \Else
+            \If {$maxHeap.size < k$}
+                \State $maxHeap.insert(node.value)$
+            \ElsIf {$node.value$ is closer than maxHeap.max}
+                \State $maxHeap.removeMax$
+                \State $maxHeap.insert(node.value)$
+            \EndIf
+            \If{$node$ is leaf}
+                \State $nodeCount += 1$
+                \textcolor{blue}{\State $node.parent = OMAP.retrieve(node.parentLabel)$}
+                \State $ObliviousSearch(query, depth-1, dim, k, node.parent, maxHeap, section\_reached)$
+            \Else
+                \If{both children of node explored or node.value $>$ maxHeap.max}
+                    \State $nodeCount += 1$
+                    \textcolor{blue}{\State $node.parent = OMAP.retrieve(node.parentLabel)$}
+                    \State $ObliviousSearch(query, depth-1, dim, k, node.parent, maxHeap, section\_reached)$
+                \ElsIf{$node.leftExplored$ and node.value $<$ maxHeap.max}
+                    \State $nodeCount += 1$
+                    \textcolor{blue}{\State $node.right = OMAP.retrieve(node.rightLabel)$}
+                    \State $ObliviousSearch(query, depth+1, dim, k, node.right, maxHeap, section\_reached)$
+                 \ElsIf{$node.rightExplored$ and node.value $<$ maxHeap.max}{
+                    \State $nodeCount += 1$
+                    \textcolor{blue}{\State $node.left = OMAP.retrieve(node.leftLabel)$}
+                    \State $ObliviousSearch(query, depth+1, dim, k, node.left, maxHeap, section\_reached)$
+                    }
+                \ElsIf{node.value $<$ maxHeap.max}{
+                    \State $nodeCount += 1$
+                    \textcolor{blue}{\State $node.left = OMAP.retrieve(node.leftLabel)$}
+                    \State $ObliviousSearch(query, depth+1, dim, k, node.left, maxHeap, section\_reached)$
+                    \State $nodeCount += 1$
+                    \State \textcolor{blue}{ $node.right = OMAP.retrieve(node.rightLabel)$}
+                    \State $ObliviousSearch(query, depth+1, dim, k, node.right, maxHeap, section\_reached)$
+                    }
+                \EndIf
+            \EndIf
+        \EndIf
+    }}    
+    \end{algorithmic}
+\end{algorithm}
+
+\end{document}
+

@@ -1,0 +1,76 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{mathtools}
+\usepackage{xcolor}
+
+\begin{document}
+
+\begin{algorithm}
+    \caption{ObliviousSearch $(query, depth, dim, k, node, maxHeap, section\_reached, nodeCount, c)$}\label{alg:cap}
+    \begin{algorithmic}
+        \If{$nodeCount >= clogN$}
+            \State exit
+        \EndIf
+        \State $cd = [depth \mod dim]$
+        \If {$section\_reached$ is false}
+            \If {$node = leaf$}
+                \State $section\_reached = true$
+            \EndIf
+            \If {$maxHeap.size < k$}
+                \State $maxHeap.insert(node.value)$
+            \ElsIf {$node.value$ is closer than maxHeap.max}
+                \State $maxHeap.removeMax$
+                \State $maxHeap.insert(node.value)$
+            \EndIf
+            \If {$query[cd] < node[cd]$ and node is not leaf}
+                \State $node.leftExplored = true$
+                \State $nodeCount += 1$
+                \textcolor{blue}{\State $node.left = OMAP.retrieve(node.leftLabel)$}
+                \State $ModifiedSearch(query, depth+1, dim, k, node.left, maxHeap, section\_reached)$
+            \ElsIf {$node$ is not leaf}
+                \State $node.rightExplored = true$
+                \State $nodeCount += 1$
+                \textcolor{blue}{\State $node.right = OMAP.retrieve(node.rightLabel)$}
+                \State $ModifiedSearch(query, depth+1, dim, k, node.right, maxHeap, section\_reached)$
+            \EndIf
+        \Else
+            \If {$maxHeap.size < k$}
+                \State $maxHeap.insert(node.value)$
+            \ElsIf {$node.value$ is closer than maxHeap.max}
+                \State $maxHeap.removeMax$
+                \State $maxHeap.insert(node.value)$
+            \EndIf
+            \If{$node$ is leaf}
+                \State $nodeCount += 1$
+                \textcolor{blue}{\State $node.parent = OMAP.retrieve(node.parentLabel)$}
+                \State $ModifiedSearch(query, depth-1, dim, k, node.parent, maxHeap, section\_reached)$
+            \Else
+                \If{both children of node explored or node.value $>$ maxHeap.max}
+                    \State $nodeCount += 1$
+                    \textcolor{blue}{\State $node.parent = OMAP.retrieve(node.parentLabel)$}
+                    \State $ModifiedSearch(query, depth-1, dim, k, node.parent, maxHeap, section\_reached)$
+                \ElsIf{$node.leftExplored$ and node.value $<$ maxHeap.max}
+                    \State $nodeCount += 1$
+                    \textcolor{blue}{\State $node.right = OMAP.retrieve(node.rightLabel)$}
+                    \State $ModifiedSearch(query, depth+1, dim, k, node.right, maxHeap, section\_reached)$
+                 \ElsIf{$node.rightExplored$ and node.value $<$ maxHeap.max}
+                    \State $nodeCount += 1$
+                    \textcolor{blue}{\State $node.left = OMAP.retrieve(node.leftLabel)$}
+                    \State $ModifiedSearch(query, depth+1, dim, k, node.left, maxHeap, section\_reached)$
+                \ElsIf{node.value $<$ maxHeap.max}
+                    \State $nodeCount += 1$
+                    \textcolor{blue}{\State $node.left = OMAP.retrieve(node.leftLabel)$}
+                    \State $ModifiedSearch(query, depth+1, dim, k, node.left, maxHeap, section\_reached)$
+                    \State $nodeCount += 1$
+                    \textcolor{blue}{\State $node.right = OMAP.retrieve(node.rightLabel)$}
+                    \State $ModifiedSearch(query, depth+1, dim, k, node.right, maxHeap, section\_reached)$
+                \EndIf
+            \EndIf
+        \EndIf
+        
+    \end{algorithmic}
+\end{algorithm}
+
+\end{document}
