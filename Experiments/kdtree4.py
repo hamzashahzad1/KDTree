@@ -1,3 +1,4 @@
+import os
 import csv
 import math
 from pstats import Stats
@@ -8,8 +9,16 @@ from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import f1_score
 from sklearn.neighbors import KDTree
+from sklearn.decomposition import KernelPCA
+from sklearn.neighbors import NearestNeighbors
 
+kpca = KernelPCA(n_components=64, kernel='cosine')
+number_of_points = 256
+train_size = int(math.ceil(0.8*number_of_points))
+test_size = int(math.floor(0.2*number_of_points))
 
 class Node:
     def __init__(self):
@@ -87,6 +96,23 @@ def prepareData(dataPath):
         labels[i] = labels_dict[labels[i]]
 
     return data,labels,labels_dict
+
+def prepareCaltech256(datapath):
+    file_list = os.listdir(datapath)
+    file_list.sort()
+    labels = []
+    labels_count = {}
+    caltech256_clip_features = []
+    for i in range(len(file_list)):
+        curr_path = datapath + "/" + file_list[i]
+        curr_features = np.load(curr_path)
+        labels_count[i] = 0
+        for j in range(len(curr_features)):
+            labels.append(i)
+            labels_count[i] += 1
+        caltech256_clip_features.extend(curr_features)
+    caltech256_clip_features = np.asarray(caltech256_clip_features)
+    return caltech256_clip_features, labels, labels_count
 
 ########################################################################
 
@@ -244,25 +270,48 @@ def modifiedSearch(query, depth, dim, k, node, kNeighbors, nodeCount, c, ln):
     return kNeighbors
 
 ######################### IMPLEMENTATIONS #######################################
+data, labels, labels_count = prepareCaltech256("/home/hamza/university_admissions/UCSC/Research/I2I_Search/CLIP_features_caltech256")
+x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size= 0.2)
+x_train = x_train[0:train_size]
+y_train = y_train[0:train_size]
+new_labels_count = {}
+for i in range(len(y_train)):
+    try:
+        new_labels_count[y_train[i]] += 1
+    except:
+        new_labels_count[y_train[i]] = 1
+x_test = x_test[0:test_size]
+y_test = y_test[0:test_size]
+
+# print(x_train.shape)
+# print(x_test.shape)
+
 
 def KNN():
-    data, labels, labels_dict = prepareData("DryBeanDataset/Dry_Bean_Dataset.csv")
-    x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size= 0.2)
+    # data, labels, labels_dict = prepareData("DryBeanDataset/Dry_Bean_Dataset.csv")
+    # data, labels = prepareCaltech256("/home/hamza/university_admissions/UCSC/Research/I2I_Search/CLIP_features_caltech256")
+    # x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size= 0.2)
+    
     knn = KNeighborsClassifier(n_neighbors=10)
     knn.fit(x_train, y_train)
     y_pred = knn.predict(x_test)
-    print(precision_score(y_test, y_pred, average = 'micro'))
+    # print("KNN Accuracy Score: ", accuracy_score(y_test, y_pred))
+    print("KNN Precision Score: ", precision_score(y_test, y_pred, average = 'micro'))
+    # print("KNN recall score: ", recall_score(y_test, y_pred, average='micro'))
+    # print("KNN f1 score: ", f1_score(y_test, y_pred, average='micro'))
 
 def _KDTree():
-    data, labels, labels_dict = prepareData("DryBeanDataset/Dry_Bean_Dataset.csv")
-    x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size= 0.2)
+    # data, labels, labels_dict = prepareData("DryBeanDataset/Dry_Bean_Dataset.csv")
+    # data, labels = prepareCaltech256("/home/hamza/university_admissions/UCSC/Research/I2I_Search/CLIP_features_caltech256")
+    # x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size= 0.2)
     root_node = Node()
     root_node = Setup(x_train, y_train,0, len(data[0]), root_node)
     y_pred = []
     count = 0
     for i in range(len(y_test)):
         kNeighbors = []; predicted_labels = []
-        kNeighbors = modifiedSearch(x_test[i], 0, len(data[0]), 10,root_node, kNeighbors, 0, 4, math.log2(len(x_train)))
+        # kNeighbors = modifiedSearch(x_test[i], 0, len(data[0]), 10,root_node, kNeighbors, 0, 4, math.log2(len(x_train)))
+        kNeighbors = Search(x_test[i], 0, len(data[0]), 10,root_node, kNeighbors)
 
         clearExplored(root_node)
         for j in range(len(kNeighbors)):
@@ -270,11 +319,15 @@ def _KDTree():
         y_pred.append(statistics.mode(predicted_labels))
         if  y_pred[i] == y_test[i]:
             count += 1
-    return precision_score(y_test, y_pred, average = 'micro')
+    # print("KDTree accuracy: ", accuracy_score(y_test, y_pred))
+    print("KDTree precision: ", precision_score(y_test, y_pred, average = 'micro'))
+    # print("KDTree recall: ", recall_score(y_test, y_pred, average='micro'))
+    # print("KDTree f1score: ", f1_score(y_test, y_pred, average='micro'))
 
 def scikit_KDTree():
-    data, labels, labels_dict = prepareData("DryBeanDataset/Dry_Bean_Dataset.csv")
-    x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size= 0.2)
+    # data, labels, labels_dict = prepareData("DryBeanDataset/Dry_Bean_Dataset.csv")
+    # data, labels = prepareCaltech256("/home/hamza/university_admissions/UCSC/Research/I2I_Search/CLIP_features_caltech256")
+    # x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size= 0.2)
     tree = KDTree(x_train, leaf_size=2)
     dist, ind = tree.query(x_test, k=10, return_distance=True, dualtree=False, breadth_first=False)
     y_pred = []
@@ -283,8 +336,34 @@ def scikit_KDTree():
         for j in range(len(ind[i])):
             temp_labels.append(y_train[ind[i][j]])
         y_pred.append(statistics.mode(temp_labels))
-    print(precision_score(y_test, y_pred, average = 'micro'))
-        
+    # print("scikit_KDTree accuracy: ", accuracy_score(y_test, y_pred))
+    print("scikit_KDTree precision: ", precision_score(y_test, y_pred, average = 'micro'))
+    # print("scikit_KDTree recall: ", recall_score(y_test, y_pred, average='micro'))  
+    # print("scikit_KDTree f1score: ", f1_score(y_test, y_pred, average='micro'))
+
+def _modifiedKDTree(c):
+    # data, labels, labels_dict = prepareData("DryBeanDataset/Dry_Bean_Dataset.csv")
+    # data, labels = prepareCaltech256("/home/hamza/university_admissions/UCSC/Research/I2I_Search/CLIP_features_caltech256")
+    # x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size= 0.2)
+    root_node = Node()
+    root_node = Setup(x_train, y_train,0, len(data[0]), root_node)
+    y_pred = []
+    count = 0
+    for i in range(len(y_test)):
+        kNeighbors = []; predicted_labels = []
+        kNeighbors = modifiedSearch(x_test[i], 0, len(data[0]), 10,root_node, kNeighbors, 0, c, math.log2(len(x_train)))
+        # kNeighbors = modifiedSearch(x_test[i], 0, len(data[0]), 10,root_node, kNeighbors)
+
+        clearExplored(root_node)
+        for j in range(len(kNeighbors)):
+            predicted_labels.append(kNeighbors[j][2])
+        y_pred.append(statistics.mode(predicted_labels))
+        if  y_pred[i] == y_test[i]:
+            count += 1
+    # print(f"Modified KDTree accuracy for c = {c}: ", accuracy_score(y_test, y_pred))
+    print(f"Modified KDTree precision for c = {c}: ", precision_score(y_test, y_pred, average = 'micro'))
+    # print(f"Modified KDTree recall for c = {c}: ", recall_score(y_test, y_pred, average='micro'))
+    # print(f"Modified KDTree f1score for c = {c}: ", f1_score(y_test, y_pred, average='micro'))
 
 def neighbors_KDTree():
     data, labels, labels_dict = prepareData("DryBeanDataset/Dry_Bean_Dataset.csv")
@@ -322,9 +401,22 @@ def neighbors_scikitKDTree():
     
 ############################### TESTING #######################################
 
-print(_KDTree())
-KNN()
-scikit_KDTree()
+# KNN()
+# print("")
+# scikit_KDTree()
+# print("")
+# _KDTree()
+# print("")
+# _modifiedKDTree(1)
+# print("")
+# _modifiedKDTree(2)
+# print("")
+# _modifiedKDTree(4)
+# print("")
+# _modifiedKDTree(16)
+# print("")
+# _modifiedKDTree(64)
+# print(_KDTree())
 
 
 def compare():
@@ -342,44 +434,92 @@ def compare():
             count += 1
     return count/len(kd_neighbors)
 
-# all_neighbors = neighbors_scikitKDTree()
+# data, labels, labels_dict = prepareData("DryBeanDataset/Dry_Bean_Dataset.csv")
+# data, labels = prepareCaltech256("/home/hamza/university_admissions/UCSC/Research/I2I_Search/CLIP_features_caltech256")
 
-# all_neighbors = []
-
-# for i in range(len(kNeighbors_list)):
-#     ten_neighbors = []
-#     for j in range(len(kNeighbors_list[i])):
-#         ten_neighbors.append(kNeighbors_list[i][j][1])
-#     all_neighbors.append(ten_neighbors)
-
-# for i in range(len(all_neighbors)):
-#     print(len(all_neighbors[i]))
-
-# kd_neighbors = neighbors_KDTree()
-# scikit_kd_neighbors = neighbors_scikitKDTree()
-
-# print(len(kd_neighbors))
-# print(len(scikit_kd_neighbors))
-# for i in range(len(kd_neighbors[0])):
-
-# my_neighbor = kd_neighbors[0][0]
-# print(my_neighbor)
-# for j in range(len(scikit_kd_neighbors[0])):
-#     comparison_neighbor = scikit_kd_neighbors[0][j]
-#     print(comparison_neighbor)
-
-    # comparison = my_neighbor == comparison_neighbor
-    # if comparison.all():
-    #     print(my_neighbor)
-    #     print(comparison_neighbor)
-    # else:
-    #     print(comparison.all())
-# print(kd_neighbors[0][0])
-# print(scikit_kd_neighbors[0][0])
+# data, labels = prepareCaltech256("/home/hamza/university_admissions/UCSC/Research/I2I_Search/CLIP_features_caltech256")
+# x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size= 0.2)
+# knn = KNeighborsClassifier(n_neighbors=10)
+# knn.fit(x_train, y_train)
+# y_pred = knn.predict(x_test[0].reshape(1, -1))
+# print(y_pred)
+# print(precision_score(y_test, y_pred, average = 'micro'))
 
 
-# print(compare())
-# l1 = [1,2,3,4,5,6,7,8,9]
 
-# l2 = l1[4+1:]
-# print(l2)
+
+##################### KNN how to get k indices of the labels per query point and use it to see the labels of each individual nearest neighbor returned per query point ######################
+
+
+neigh = NearestNeighbors(n_neighbors=10)
+neigh.fit(x_train)
+indices = neigh.kneighbors(x_test[0].reshape(1,-1), return_distance=True)
+distances = indices[0][0]
+indices = indices[1][0]
+predicted_labels = []
+true_labels = []
+for i in range(len(indices)):
+    predicted_labels.append(y_train[indices[i]])
+    true_labels.append(y_test[0])
+true_positive = 0; true_negative = 0; false_positive = 0; false_negative = 0
+total_correct_labels = 0
+try:
+    total_correct_labels = new_labels_count[true_labels[0]]
+except:
+    pass
+if total_correct_labels > 0:
+    for i in range(len(predicted_labels)):
+        if predicted_labels[i] == true_labels[i]:
+            true_positive += 1
+        else:
+            false_positive += 1
+    false_negative = new_labels_count[true_labels[0]] - true_positive
+    true_negative = len(x_train) - true_positive - false_positive - false_negative
+else:
+    false_positive = len(predicted_labels)
+    true_negative = len(x_train) - false_positive
+
+print(predicted_labels, "\n")
+print(distances, "\n")
+print("True Label:", true_labels[0])
+print("Total correct labels: ", total_correct_labels)
+print("True Positive: ", true_positive)
+print("False Positive: ", false_positive)
+print("True Negative: ", true_negative)
+print("False Negative: ", false_negative)
+print(true_positive+true_negative+false_positive+false_negative)
+print(len(x_train))
+
+manual_precision = true_positive/(true_positive+false_positive)
+manual_recall = 0
+try:
+    manual_recall = true_positive/(true_positive+false_negative)
+except:
+    pass
+manual_f1_score = 0
+try:
+    manual_f1_score = (2*manual_precision*manual_recall)/(manual_precision+manual_recall)
+except:
+    pass
+precision = precision_score(true_labels, predicted_labels, average='micro')
+recall = recall_score(true_labels, predicted_labels, average='micro')
+f1score = f1_score(true_labels, predicted_labels, average='micro')
+
+
+print("\nManual precision: ", manual_precision)
+print("Manual recall: ", manual_recall)
+print("Manual f1 score: ", manual_f1_score)
+
+print("\nprecision: ", precision)
+print("recall: ", recall)
+print("f1 score: ", f1score)
+
+# print(true_labels)
+# print(predicted_labels)
+# print("accuracy: ", accuracy)
+# print("precision: ", precision)
+# print("recall: ", recall)
+# print("f1score: ", f1score)
+
+
+
