@@ -16,7 +16,7 @@ from sklearn.decomposition import KernelPCA
 from sklearn.neighbors import NearestNeighbors
 
 kpca = KernelPCA(n_components=64, kernel='cosine')
-number_of_points = 256
+number_of_points = 5000
 train_size = int(math.ceil(0.8*number_of_points))
 test_size = int(math.floor(0.2*number_of_points))
 
@@ -241,32 +241,32 @@ def modifiedSearch(query, depth, dim, k, node, kNeighbors, nodeCount, c, ln):
         if query[cd] < node.value[cd]:
             node.leftExplored = True
             nodeCount += 1
-            Search(query, depth+1, dim, k, node.left, kNeighbors)
+            modifiedSearch(query, depth+1, dim, k, node.left, kNeighbors, nodeCount, c, ln)
             worst_neighbor = return_worst_neighbor(kNeighbors)
             if abs(query[cd] - node.value[cd]) <= worst_neighbor[0] or len(kNeighbors) < k:
                 node.rightExplored = True
                 nodeCount += 1
-                Search(query, depth+1, dim, k, node.right, kNeighbors)
+                modifiedSearch(query, depth+1, dim, k, node.right, kNeighbors, nodeCount, c, ln)
         else:
             node.rightExplored = True
             nodeCount += 1
-            Search(query, depth+1, dim, k, node.right, kNeighbors)
+            modifiedSearch(query, depth+1, dim, k, node.right, kNeighbors, nodeCount, c, ln)
             worst_neighbor = return_worst_neighbor(kNeighbors)
             if abs(query[cd] - node.value[cd]) <= worst_neighbor[0] or len(kNeighbors) < k:
                 node.leftExplored = True
                 nodeCount += 1
-                Search(query, depth+1, dim, k, node.left, kNeighbors)
+                modifiedSearch(query, depth+1, dim, k, node.left, kNeighbors, nodeCount, c, ln)
     else:
         worst_neighbor = return_worst_neighbor(kNeighbors)
         if abs(query[cd] - node.value[cd]) <= worst_neighbor[0] or len(kNeighbors) < k:
             if not node.leftExplored:
                 node.leftExplored = True
                 nodeCount += 1
-                Search(query, depth+1, dim, k, node.left, kNeighbors)
+                modifiedSearch(query, depth+1, dim, k, node.left, kNeighbors, nodeCount, c, ln)
             elif not node.rightExplored:
                 node.rightExplored = True
                 nodeCount += 1
-                Search(query, depth+1, dim, k, node.right, kNeighbors)
+                modifiedSearch(query, depth+1, dim, k, node.right, kNeighbors, nodeCount, c, ln)
     return kNeighbors
 
 ######################### IMPLEMENTATIONS #######################################
@@ -398,7 +398,108 @@ def neighbors_scikitKDTree():
             temp_neighbors.append(x_train[ind[i][j]])
         x_pred.append(temp_neighbors)
     return x_pred
-    
+
+def new_KDTree(k):
+    root_node = Node()
+    root_node = Setup(x_train, y_train,0, len(data[0]), root_node)
+    precision = 0; recall = 0; f1score = 0
+    for i in range(len(y_test)):
+        round_precision = 0; round_recall = 0; round_f1score = 0
+        kNeighbors = []; predicted_labels = []; correct_label = y_test[i]
+        true_positive = 0; false_positive = 0; false_negative = 0; true_negative = 0
+        total_correct_labels = 0
+        
+        try:
+            total_correct_labels = new_labels_count[correct_label]
+        except:
+            pass
+        if total_correct_labels == 0:
+            false_positive = k
+            true_negative = len(x_train) - false_positive
+        else:
+            kNeighbors = Search(x_test[i], 0, len(data[0]), k,root_node, kNeighbors)
+            clearExplored(root_node)
+            for j in range(len(kNeighbors)):
+                if kNeighbors[j][2] == correct_label:
+                    true_positive += 1
+                else:
+                    false_positive += 1
+            false_negative = total_correct_labels - true_positive
+            # true_negative = len(x_train) - true_positive - false_positive - false_negative
+        
+        round_precision = true_positive/(true_positive + false_positive)
+        try:
+            round_recall  = true_positive/(true_positive+false_negative)
+        except:
+            pass
+        try:
+            round_f1score = (2*round_precision*round_recall)/(round_precision+round_recall)
+        except:
+            pass
+        precision += round_precision
+        recall += round_recall
+        f1score += round_f1score
+    precision /= len(y_test)
+    recall /= len(y_test)
+    f1score /= len(y_test)
+
+    print("KDTree precision: ", precision)
+    print("KDTree recall: ", recall)
+    print("KDTree f1score: ", f1score)
+
+def new_KNN(k):
+    neigh = NearestNeighbors(n_neighbors=k)
+    knn_x_train = np.copy(x_train)
+    neigh.fit(knn_x_train)
+    precision = 0; recall = 0; f1score = 0
+    for i in range(len(y_test)):
+        round_precision = 0; round_recall = 0; round_f1score = 0
+        true_positive = 0; false_positive = 0; false_negative = 0; true_negative = 0
+        correct_label = y_test[i]
+        total_correct_labels = 0
+        try:
+            total_correct_labels = new_labels_count[correct_label]
+        except:
+            pass
+        if total_correct_labels == 0:
+            false_positive = k
+            true_negative = len(x_train) - false_positive
+        else:
+            distances, indices = neigh.kneighbors(x_test[i].reshape(1,-1), return_distance=True)
+            # print(indices)
+            # break
+            indices = indices[0]
+            for j in range(len(indices)):
+                predicted_label = y_train[indices[j]]
+                if predicted_label == correct_label:
+                    true_positive += 1
+                else:
+                    false_positive += 1
+            false_negative = total_correct_labels - true_positive
+            # true_negative = len(x_train) - true_positive - false_positive - false_negative
+        
+        round_precision = true_positive/(true_positive + false_positive)
+        try:
+            round_recall  = true_positive/(true_positive+false_negative)
+        except:
+            pass
+        try:
+            round_f1score = (2*round_precision*round_recall)/(round_precision+round_recall)
+        except:
+            pass
+        precision += round_precision
+        recall += round_recall
+        f1score += round_f1score
+    precision /= len(y_test)
+    recall /= len(y_test)
+    f1score /= len(y_test)
+
+    print("KNN precision: ", precision)
+    print("KNN recall: ", recall)
+    print("KNN f1score: ", f1score)
+
+        
+
 ############################### TESTING #######################################
 
 # KNN()
@@ -418,6 +519,20 @@ def neighbors_scikitKDTree():
 # _modifiedKDTree(64)
 # print(_KDTree())
 
+
+# new_KDTree(10)
+# print("\n")
+# new_KDTree(10)
+# print("\n")
+# new_KNN(10)
+# print("\n")
+# new_KDTree(10)
+# print("\n")
+# new_KNN(10)
+# print("\n")
+# new_KDTree(10)
+
+# print(x_test.dtype)
 
 def compare():
     kd_neighbors = neighbors_KDTree()
@@ -450,7 +565,7 @@ def compare():
 
 ##################### KNN how to get k indices of the labels per query point and use it to see the labels of each individual nearest neighbor returned per query point ######################
 
-
+'''
 neigh = NearestNeighbors(n_neighbors=10)
 neigh.fit(x_train)
 indices = neigh.kneighbors(x_test[0].reshape(1,-1), return_distance=True)
@@ -520,6 +635,8 @@ print("f1 score: ", f1score)
 # print("precision: ", precision)
 # print("recall: ", recall)
 # print("f1score: ", f1score)
+
+'''
 
 
 
