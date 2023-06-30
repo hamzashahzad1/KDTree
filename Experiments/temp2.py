@@ -16,7 +16,7 @@ from sklearn.neighbors import KDTree
 from sklearn.decomposition import KernelPCA
 from sklearn.neighbors import NearestNeighbors
 
-number_of_points = 256
+number_of_points = 4096
 train_size = int(math.ceil(0.8*number_of_points))
 test_size = int(math.floor(0.2*number_of_points))
 
@@ -122,12 +122,12 @@ def Search(query, depth, dim, k, node, kNeighbors):
         kNeighbors.append((euclideanDistance(query, node.value), node.value, node.label))
         node.euclideanChecked = True
     else:
-        if not node.euclideanChecked:
-            worst_neighbor = return_worst_neighbor(kNeighbors)
-            if euclideanDistance(query, node.value) < worst_neighbor[0]:
-                kNeighbors.remove(worst_neighbor)
-                kNeighbors.append((euclideanDistance(query, node.value), node.value, node.label))
-            node.euclideanChecked = True
+        # if not node.euclideanChecked:
+        worst_neighbor = return_worst_neighbor(kNeighbors)
+        if euclideanDistance(query, node.value) < worst_neighbor[0]:
+            kNeighbors.remove(worst_neighbor)
+            kNeighbors.append((euclideanDistance(query, node.value), node.value, node.label))
+        node.euclideanChecked = True
     
     if (not node.leftExplored) and (not node.rightExplored):
         if query[cd] < node.value[cd]:
@@ -145,17 +145,17 @@ def Search(query, depth, dim, k, node, kNeighbors):
             if abs(query[cd] - node.value[cd]) <= worst_neighbor[0] or len(kNeighbors) < k:
                 node.leftExplored = True
                 Search(query, depth+1, dim, k, node.left, kNeighbors)
-    else:
-        worst_neighbor = return_worst_neighbor(kNeighbors)
-        if abs(query[cd] - node.value[cd]) <= worst_neighbor[0] or len(kNeighbors) < k:
-            if not node.leftExplored:
+    # else:
+    #     worst_neighbor = return_worst_neighbor(kNeighbors)
+    #     if abs(query[cd] - node.value[cd]) <= worst_neighbor[0] or len(kNeighbors) < k:
+    #         if not node.leftExplored:
                         
-                node.leftExplored = True
-                Search(query, depth+1, dim, k, node.left, kNeighbors)
-            elif not node.rightExplored:
+    #             node.leftExplored = True
+    #             Search(query, depth+1, dim, k, node.left, kNeighbors)
+    #         elif not node.rightExplored:
                         
-                node.rightExplored = True
-                Search(query, depth+1, dim, k, node.right, kNeighbors)
+    #             node.rightExplored = True
+    #             Search(query, depth+1, dim, k, node.right, kNeighbors)
     return kNeighbors
 
 
@@ -446,7 +446,7 @@ def new_modified_KDTree(k,c, x_train, y_train, x_test, y_test):
     # print(f"Modified KDTree f1score for c = {c}: ", KD_f1score)
 
 ############################### TESTING #######################################
-k = 100
+k = 10
 
 start_time = time.time()
 new_KNN(k, np.copy(x_train), np.copy(y_train), np.copy(x_test), np.copy(y_test))
