@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cmath>
 #include <algorithm>
+#include <map>
 
 using key_type = u_int64_t;
 
@@ -19,6 +20,7 @@ struct dataPoint
     }
 };
 
+// contains the datapoint, distance of datapoint from query, and the key of the node from where this datapoint was retrieved
 struct neighborPoint
 {
     key_type key;
@@ -167,6 +169,57 @@ std::vector<neighborPoint> search(Node* node, std::vector<double> query, std::ve
     return kNeighbors;
 }
 
+std::vector<neighborPoint> modifiedSearch(Node* node, std::vector<double> query, std::vector<neighborPoint> &kNeighbors, int depth, int dim, int k, int &nodeCount, int c, int ln)
+{
+    if (nodeCount >= c*k*ln){
+        nodeCount--;
+        return kNeighbors;
+    }
+    if(node == NULL) {
+        nodeCount--;
+        return kNeighbors;
+    }
+    int cd = depth%dim;
+    if(kNeighbors.size() < k){
+        neighborPoint point;
+        point.key = node->key;
+        point.datapoint = node->datapoint;
+        point.distance = euclideadDistance(query, node->datapoint.value);
+        kNeighbors.push_back(point);
+    }
+    else{
+        neighborPoint worstPoint = worstNeighbor(kNeighbors);
+        if(euclideadDistance(query, node->datapoint.value) < worstPoint.distance){
+            neighborPoint point;
+            point.key = node->key;
+            point.datapoint = node->datapoint;
+            point.distance = euclideadDistance(query, node->datapoint.value);
+            kNeighbors.push_back(point);
+        }
+        else kNeighbors.push_back(worstPoint);
+    }
+
+    if(query[cd] < node->datapoint.value[cd]){
+        kNeighbors = modifiedSearch(node->left, query, kNeighbors, depth+1, dim, k, ++nodeCount, c, ln);
+        neighborPoint worstPoint = worstNeighbor(kNeighbors);
+        if( (abs(query[cd] - node->datapoint.value[cd]) <= worstPoint.distance) || kNeighbors.size() < k ){
+            kNeighbors.push_back(worstPoint);
+            kNeighbors = modifiedSearch(node->right, query, kNeighbors, depth+1, dim, k, ++nodeCount, c, ln);
+        }
+        else kNeighbors.push_back(worstPoint);
+    }
+    else{
+        kNeighbors = modifiedSearch(node->right, query, kNeighbors, depth+1, dim, k, ++nodeCount, c, ln);
+        neighborPoint worstPoint = worstNeighbor(kNeighbors);
+        if( (abs(query[cd] - node->datapoint.value[cd]) <= worstPoint.distance) || kNeighbors.size() < k ){
+            kNeighbors.push_back(worstPoint);
+            kNeighbors = modifiedSearch(node->left, query, kNeighbors, depth+1, dim, k, ++nodeCount, c, ln);
+        }
+        else kNeighbors.push_back(worstPoint);
+    }
+    return kNeighbors;
+}
+
 void printVector(std::vector<double> myVector)
 {
     std::cout << "{";
@@ -289,13 +342,23 @@ int main()
     root = setup(root, train_dataset, 0, dim);
 
     std::vector<neighborPoint> kNeighbors;
-    kNeighbors = search(root, test_dataset[0].value, kNeighbors, 0, dim, k);
 
+    kNeighbors = search(root, test_dataset[0].value, kNeighbors, 0, dim, k);
     for(int i = 0; i < kNeighbors.size(); i++){
-        std::cout << kNeighbors[i].datapoint.label << " ";  
+        std::cout << kNeighbors[i].datapoint.label << " ";
     }
     std::cout << std::endl;
-    // std::cout << kNeighbors.size() << std::endl;
+    std::cout << test_dataset[0].label << std::endl;
+
+    std::vector<neighborPoint> modifiedKNeighbors;
+    int nodeCount = 0; int c = 3; int ln = (int)ceil(log2(train_dataset.size()));
+    
+    modifiedKNeighbors = modifiedSearch(root, test_dataset[0].value, modifiedKNeighbors, 0, dim, k, nodeCount, c, ln);
+    std::cout << nodeCount << std::endl;
+    for(int i = 0; i < modifiedKNeighbors.size(); i++){
+        std::cout << modifiedKNeighbors[i].datapoint.label << " ";  
+    }
+    std::cout << std::endl;
 
     return 0; 
 }
